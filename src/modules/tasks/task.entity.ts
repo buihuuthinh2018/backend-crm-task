@@ -63,21 +63,21 @@ export class Task {
   })
   priority: TaskPriority;
 
-  @ManyToOne(() => Project, (project) => project.tasks, { eager: true })
+  @ManyToOne(() => Project, (project) => project.tasks)
   @JoinColumn({ name: 'projectId' })
   project: Project;
 
   @Column()
   projectId: string;
 
-  @ManyToOne(() => User, (user) => user.assignedTasks, { eager: true, nullable: true })
+  @ManyToOne(() => User, (user) => user.assignedTasks, { nullable: true })
   @JoinColumn({ name: 'assigneeId' })
   assignee: User;
 
   @Column({ nullable: true })
   assigneeId: string;
 
-  @ManyToOne(() => User, (user) => user.reportedTasks, { eager: true })
+  @ManyToOne(() => User, (user) => user.reportedTasks)
   @JoinColumn({ name: 'reporterId' })
   reporter: User;
 

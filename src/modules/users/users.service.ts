@@ -5,6 +5,17 @@ import * as bcrypt from 'bcrypt';
 import { User } from './user.entity';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 
+const USER_SELECT_FIELDS: (keyof User)[] = [
+  'id',
+  'email',
+  'firstName',
+  'lastName',
+  'role',
+  'isActive',
+  'createdAt',
+  'updatedAt',
+];
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -35,14 +46,14 @@ export class UsersService {
 
   async findAll(): Promise<User[]> {
     return this.usersRepository.find({
-      select: ['id', 'email', 'firstName', 'lastName', 'role', 'isActive', 'createdAt', 'updatedAt'],
+      select: USER_SELECT_FIELDS,
     });
   }
 
   async findOne(id: string): Promise<User> {
     const user = await this.usersRepository.findOne({
       where: { id },
-      select: ['id', 'email', 'firstName', 'lastName', 'role', 'isActive', 'createdAt', 'updatedAt'],
+      select: USER_SELECT_FIELDS,
     });
 
     if (!user) {

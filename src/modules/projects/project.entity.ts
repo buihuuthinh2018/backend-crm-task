@@ -46,7 +46,7 @@ export class Project {
   @Column({ type: 'date', nullable: true })
   endDate: Date;
 
-  @ManyToOne(() => User, (user) => user.ownedProjects, { eager: true })
+  @ManyToOne(() => User, (user) => user.ownedProjects)
   @JoinColumn({ name: 'ownerId' })
   owner: User;
 
