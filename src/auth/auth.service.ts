@@ -18,15 +18,17 @@ export class AuthService {
    * Validate user credentials
    */
   async validateUser(email: string, password: string): Promise<Omit<User, 'password'> | null> {
-    const user = await this.prisma.user.findUnique({
-      where: { email },
-    });
+    return this.prisma.executeWithRetry(async () => {
+      const user = await this.prisma.user.findUnique({
+        where: { email },
+      });
 
-    if (user && user.password && (await bcrypt.compare(password, user.password))) {
-      const { password: _, ...result } = user;
-      return result;
-    }
-    return null;
+      if (user && user.password && (await bcrypt.compare(password, user.password))) {
+        const { password: _, ...result } = user;
+        return result;
+      }
+      return null;
+    });
   }
 
   /**
@@ -46,30 +48,32 @@ export class AuthService {
    * Register new user
    */
   async register(registerDto: RegisterDto) {
-    // Check if user exists
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: registerDto.email },
+    return this.prisma.executeWithRetry(async () => {
+      // Check if user exists
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: registerDto.email },
+      });
+
+      if (existingUser) {
+        throw new ConflictException('User with this email already exists');
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(registerDto.password, 10);
+
+      // Create user
+      const user = await this.prisma.user.create({
+        data: {
+          email: registerDto.email,
+          name: registerDto.name,
+          avatar: registerDto.avatar,
+          password: hashedPassword,
+        },
+      });
+
+      const { password: _, ...userWithoutPassword } = user;
+      return this.generateTokens(userWithoutPassword);
     });
-
-    if (existingUser) {
-      throw new ConflictException('User with this email already exists');
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(registerDto.password, 10);
-
-    // Create user
-    const user = await this.prisma.user.create({
-      data: {
-        email: registerDto.email,
-        name: registerDto.name,
-        avatar: registerDto.avatar,
-        password: hashedPassword,
-      },
-    });
-
-    const { password: _, ...userWithoutPassword } = user;
-    return this.generateTokens(userWithoutPassword);
   }
 
   /**
@@ -83,41 +87,45 @@ export class AuthService {
       throw new UnauthorizedException('Invalid Google token');
     }
 
-    // Find or create user in our database
-    let user = await this.prisma.user.findUnique({
-      where: { supabaseId: supabaseUser.id },
-    });
-
-    if (!user) {
-      // Also check by email
-      user = await this.prisma.user.findUnique({
-        where: { email: supabaseUser.email },
+    // Use retry logic for database operations to handle connection pool issues
+    const user = await this.prisma.executeWithRetry(async () => {
+      // Find or create user in our database
+      let dbUser = await this.prisma.user.findUnique({
+        where: { supabaseId: supabaseUser.id },
       });
 
-      if (user) {
-        // Link existing user with Supabase
-        user = await this.prisma.user.update({
-          where: { id: user.id },
-          data: { supabaseId: supabaseUser.id },
-        });
-      } else {
-        // Create new user with upsert to handle race conditions
-        user = await this.prisma.user.upsert({
+      if (!dbUser) {
+        // Also check by email
+        dbUser = await this.prisma.user.findUnique({
           where: { email: supabaseUser.email },
-          update: { 
-            supabaseId: supabaseUser.id,
-            name: supabaseUser.user_metadata?.full_name || supabaseUser.email.split('@')[0],
-            avatar: supabaseUser.user_metadata?.avatar_url,
-          },
-          create: {
-            email: supabaseUser.email,
-            name: supabaseUser.user_metadata?.full_name || supabaseUser.email.split('@')[0],
-            avatar: supabaseUser.user_metadata?.avatar_url,
-            supabaseId: supabaseUser.id,
-          },
         });
+
+        if (dbUser) {
+          // Link existing user with Supabase
+          dbUser = await this.prisma.user.update({
+            where: { id: dbUser.id },
+            data: { supabaseId: supabaseUser.id },
+          });
+        } else {
+          // Create new user with upsert to handle race conditions
+          dbUser = await this.prisma.user.upsert({
+            where: { email: supabaseUser.email },
+            update: { 
+              supabaseId: supabaseUser.id,
+              name: supabaseUser.user_metadata?.full_name || supabaseUser.email.split('@')[0],
+              avatar: supabaseUser.user_metadata?.avatar_url,
+            },
+            create: {
+              email: supabaseUser.email,
+              name: supabaseUser.user_metadata?.full_name || supabaseUser.email.split('@')[0],
+              avatar: supabaseUser.user_metadata?.avatar_url,
+              supabaseId: supabaseUser.id,
+            },
+          });
+        }
       }
-    }
+      return dbUser;
+    });
 
     const { password: _, ...userWithoutPassword } = user;
     return this.generateTokens(userWithoutPassword);
