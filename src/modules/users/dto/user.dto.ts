@@ -1,35 +1,72 @@
-import { IsEmail, IsString, MinLength, IsEnum, IsOptional } from 'class-validator';
-import { UserRole } from '../user.entity';
+import { IsEmail, IsString, IsOptional, IsUrl, IsBoolean } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateUserDto {
+  @ApiProperty({
+    example: 'user@example.com',
+    description: 'User email address',
+  })
   @IsEmail()
   email: string;
 
+  @ApiProperty({
+    example: 'John Doe',
+    description: 'User full name',
+  })
   @IsString()
-  @MinLength(6)
-  password: string;
+  name: string;
 
-  @IsString()
-  firstName: string;
-
-  @IsString()
-  lastName: string;
-
-  @IsEnum(UserRole)
+  @ApiPropertyOptional({
+    example: 'https://example.com/avatar.jpg',
+    description: 'User avatar URL',
+  })
+  @IsUrl()
   @IsOptional()
-  role?: UserRole;
+  avatar?: string;
 }
 
 export class UpdateUserDto {
+  @ApiPropertyOptional({
+    example: 'John Doe',
+    description: 'User full name',
+  })
   @IsString()
   @IsOptional()
-  firstName?: string;
+  name?: string;
 
-  @IsString()
+  @ApiPropertyOptional({
+    example: 'https://example.com/avatar.jpg',
+    description: 'User avatar URL',
+  })
+  @IsUrl()
   @IsOptional()
-  lastName?: string;
+  avatar?: string;
 
-  @IsEnum(UserRole)
+  @ApiPropertyOptional({
+    example: true,
+    description: 'User active status',
+  })
+  @IsBoolean()
   @IsOptional()
-  role?: UserRole;
+  isActive?: boolean;
+}
+
+export class UserResponseDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiPropertyOptional()
+  avatar?: string;
+
+  @ApiProperty()
+  isActive: boolean;
+
+  @ApiProperty()
+  createdAt: Date;
 }

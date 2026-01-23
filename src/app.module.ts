@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { DatabaseConfigService } from './config/database.config';
+import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { TasksModule } from './modules/tasks/tasks.module';
+import { ActivityLogsModule } from './modules/activity-logs/activity-logs.module';
+import { SupabaseModule } from './supabase/supabase.module';
 
 @Module({
   imports: [
@@ -15,16 +16,18 @@ import { TasksModule } from './modules/tasks/tasks.module';
       envFilePath: '.env',
     }),
     
-    // Database Module
-    TypeOrmModule.forRootAsync({
-      useClass: DatabaseConfigService,
-    }),
+    // Prisma Module
+    PrismaModule,
+    
+    // Supabase Module
+    SupabaseModule,
     
     // Feature Modules
     AuthModule,
     UsersModule,
     ProjectsModule,
     TasksModule,
+    ActivityLogsModule,
   ],
 })
 export class AppModule {}
